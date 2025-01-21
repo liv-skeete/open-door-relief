@@ -79,6 +79,12 @@ web_modules/
 .env.production.local
 .env.local
 
+# Firebase-specific files
+firebase-debug.log
+.firestore/
+firestore.rules
+firestore.indexes.json
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
@@ -128,3 +134,7 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Build output
+build/
+dist/
