@@ -1,19 +1,20 @@
-// Import Firebase functions
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-// Your Firebase app configuration
+// Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCvv-_nzeq31fdzAnqpmE19tHICsS-ipgw",
-  authDomain: "disaster-relief-app-c67e7.firebaseapp.com",
-  projectId: "disaster-relief-app-c67e7",
-  storageBucket: "disaster-relief-app-c67e7.appspot.com",
-  messagingSenderId: "730696261392",
-  appId: "1:730696261392:web:2cf324cb96b1d83e360f95",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase and Firestore
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-export { db };
+export { db, auth };
