@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 
-const SignupForm = () => {
+const SignupForm = ({ toggleForm, onAuthSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -23,8 +22,7 @@ const SignupForm = () => {
       setEmail(""); // Clear the email field
       setPassword(""); // Clear the password field
       setConfirmPassword(""); // Clear the confirm password field
-      alert("Signup successful! Redirecting to profile creation...");
-      navigate("/profile-setup"); // Redirect to a profile setup page after signup
+      onAuthSuccess(); // Use the callback for successful authentication
     } catch (err) {
       setError(err.message);
     }
@@ -32,7 +30,6 @@ const SignupForm = () => {
 
   return (
     <div className="form-container">
-      <h1>Sign Up</h1>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSignup}>
         <div className="form-group">
@@ -70,7 +67,7 @@ const SignupForm = () => {
         </button>
       </form>
       <p>
-        Already have an account? <a href="/login">Login</a>
+        Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); toggleForm(); }}>Login</a>
       </p>
     </div>
   );

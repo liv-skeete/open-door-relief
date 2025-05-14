@@ -2,11 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
-const LoginForm = () => {
+const LoginForm = ({ toggleForm, onAuthSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -16,8 +15,7 @@ const LoginForm = () => {
       await signInWithEmailAndPassword(auth, email, password);
       setEmail(""); // Clear the email field
       setPassword(""); // Clear the password field
-      alert("Login successful!");
-      navigate("/home"); // Redirect to the home page after login
+      onAuthSuccess(); // Use the callback for successful authentication
     } catch (err) {
       setError(err.message);
     }
@@ -25,7 +23,6 @@ const LoginForm = () => {
 
   return (
     <div className="form-container">
-      <h1>Login</h1>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleLogin}>
         <div className="form-group">
@@ -53,7 +50,7 @@ const LoginForm = () => {
         </button>
       </form>
       <p>
-        Don't have an account? <a href="/signup">Sign up</a>
+        Don't have an account? <a href="#" onClick={(e) => { e.preventDefault(); toggleForm(); }}>Sign up</a>
       </p>
     </div>
   );
