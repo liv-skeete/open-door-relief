@@ -138,3 +138,8 @@ dist
 # Build output
 build/
 dist/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
