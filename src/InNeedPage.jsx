@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, query, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import "./App.css";
 
@@ -29,12 +29,23 @@ function InNeedPage() {
   const [filterPetFriendly, setFilterPetFriendly] = useState(false);
   const [filterNightsOffered, setFilterNightsOffered] = useState("");
 
-  // Fetch pledges from Firestore
+  // Fetch pledges from Firestore with realtime updates
   useEffect(() => {
     const fetchPledges = async () => {
-      const querySnapshot = await getDocs(collection(db, "pledges"));
-      const fetchedPledges = querySnapshot.docs.map((doc) => doc.data());
-      setPledges(fetchedPledges);
+      try {
+        const q = query(collection(db, "pledges"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const fetchedPledges = querySnapshot.docs.map((doc) => ({
+            id: doc.id, // Include document ID for reference
+            ...doc.data()
+          }));
+          setPledges(fetchedPledges);
+        });
+        return () => unsubscribe(); // Cleanup on unmount
+      } catch (error) {
+        console.error("Error fetching pledges: ", error);
+        alert("Error loading pledges. Please check your connection and permissions.");
+      }
     };
     fetchPledges();
   }, []);
@@ -121,7 +132,8 @@ function InNeedPage() {
       setContactInfo("");
     } catch (error) {
       console.error("Error submitting request: ", error);
-      alert("Something went wrong. Please try again.");
+      // More detailed error message
+      alert(`Error submitting request: ${error.code || ''} - ${error.message || 'Unknown error'}. Please check your connection and permissions.`);
     }
   };
 

@@ -2,22 +2,45 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from "react-router-dom";
 import InNeedPage from "./InNeedPage";
 import WillingToHelpPage from "./WillingToHelpPage";
+import ProfilePage from "./ProfilePage";
+import VerificationPendingPage from "./VerificationPendingPage";
 import AuthSwitch from "./components/Auth/AuthSwitch";
+import NavMenu from "./components/NavMenu";
 import "./App.css";
 import logo from "./assets/logo.png";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsLoggedIn(!!user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Check if test account or verified
+        const isTestAccount = user.email.toLowerCase() === 'test@reliefapp.org';
+        
+        if (isTestAccount || user.emailVerified) {
+          setIsLoggedIn(true);
+          setIsVerified(true);
+        } else {
+          // User is logged in but not verified
+          setIsLoggedIn(true);
+          setIsVerified(false);
+        }
+      } else {
+        // No user is logged in
+        setIsLoggedIn(false);
+        setIsVerified(false);
+      }
     });
 
     return () => unsubscribe();
   }, []);
+  
+  // Helper function to check if user can access protected routes
+  const canAccessProtectedRoutes = isLoggedIn && isVerified;
 
   return (
     <Router>
@@ -25,6 +48,7 @@ function App() {
         <header className="header">
           <h1>Open Door Relief</h1>
           <p className="subtitle">Connecting communities during disasters</p>
+          {canAccessProtectedRoutes && <NavMenu />}
         </header>
         <Routes>
           {/* Main landing page */}
@@ -35,13 +59,25 @@ function App() {
                 <img src={logo} alt="Open Door Relief Logo" className="logo" />
                 <div className="home-buttons">
                   <Link
-                    to={isLoggedIn ? "/in-need" : "/auth?redirect=/in-need"}
+                    to={
+                      canAccessProtectedRoutes
+                        ? "/in-need"
+                        : isLoggedIn
+                          ? "/verification-pending"
+                          : "/auth?redirect=/in-need"
+                    }
                     className="home-button"
                   >
                     I am in Need
                   </Link>
                   <Link
-                    to={isLoggedIn ? "/willing-to-help" : "/auth?redirect=/willing-to-help"}
+                    to={
+                      canAccessProtectedRoutes
+                        ? "/willing-to-help"
+                        : isLoggedIn
+                          ? "/verification-pending"
+                          : "/auth?redirect=/willing-to-help"
+                    }
                     className="home-button"
                   >
                     I am Willing to Help
@@ -57,14 +93,47 @@ function App() {
           {/* In Need Page */}
           <Route
             path="/in-need"
-            element={isLoggedIn ? <InNeedPage /> : <Navigate to="/auth?redirect=/in-need" />}
+            element={
+              canAccessProtectedRoutes ? (
+                <InNeedPage />
+              ) : isLoggedIn ? (
+                <Navigate to="/verification-pending" />
+              ) : (
+                <Navigate to="/auth?redirect=/in-need" />
+              )
+            }
           />
 
           {/* Willing to Help Page */}
           <Route
             path="/willing-to-help"
-            element={isLoggedIn ? <WillingToHelpPage /> : <Navigate to="/auth?redirect=/willing-to-help" />}
+            element={
+              canAccessProtectedRoutes ? (
+                <WillingToHelpPage />
+              ) : isLoggedIn ? (
+                <Navigate to="/verification-pending" />
+              ) : (
+                <Navigate to="/auth?redirect=/willing-to-help" />
+              )
+            }
           />
+
+          {/* Profile Page */}
+          <Route
+            path="/profile"
+            element={
+              canAccessProtectedRoutes ? (
+                <ProfilePage />
+              ) : isLoggedIn ? (
+                <Navigate to="/verification-pending" />
+              ) : (
+                <Navigate to="/auth?redirect=/profile" />
+              )
+            }
+          />
+
+          {/* Verification Pending Page */}
+          <Route path="/verification-pending" element={<VerificationPendingPage />} />
 
           {/* Authentication Page */}
           <Route path="/auth" element={<AuthSwitch />} />
