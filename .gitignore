@@ -82,6 +82,7 @@ web_modules/
 # Firebase-specific files
 firebase-debug.log
 .firestore/
+.firebase/
 firestore.rules
 firestore.indexes.json
 
