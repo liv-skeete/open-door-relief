@@ -2,23 +2,71 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. This is useful for development
-    // and testing purposes.
-    //
-    // NOTE: This configuration allows unrestricted access to your database,
-    // which may pose security risks in a production environment.
-    // Consider implementing proper authentication and authorization rules
-    // for production use.
-    // Allow public access to all documents (for backward compatibility)
-    match /{document=**} {
-      allow read, write: if true; // Updated to allow all access without time restriction
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
     
-    // User-specific rules
+    function isTestAccount() {
+      return isSignedIn() && request.auth.token.email.toLowerCase() == 'test@reliefapp.org';
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email.matches('.*@opendoorrelief\\.org$');
+    }
+    
+    function isDeveloper() {
+      return isTestAccount() || isAdmin();
+    }
+    
+    function isVerified() {
+      return isSignedIn() && (
+        request.auth.token.email_verified == true ||
+        isTestAccount()
+      );
+    }
+    
+    function isValidEmail(email) {
+      return email.matches('^[^@]+@[^@]+\\.[^@]+$');
+    }
+    
+    function isOwner(contactInfo) {
+      return isSignedIn() && request.auth.token.email == contactInfo;
+    }
+    
+    // DEVELOPMENT MODE - Allows test account full access
+    // IMPORTANT: Remove or modify before production deployment!
+    match /{document=**} {
+      allow read, write: if isDeveloper();
+    }
+    
+    // The rules below will apply for non-developer accounts
+    // and will be the primary rules in production
+    
+    // Public requests - readable by all, writable by verified users
+    match /requests/{requestId} {
+      allow read: if true;
+      allow create: if isVerified()
+        && request.resource.data.name is string
+        && request.resource.data.location is string
+        && request.resource.data.partySize is number;
+      allow update, delete: if isVerified()
+        && (isOwner(resource.data.contactInfo) || isAdmin());
+    }
+
+    // Public pledges - readable by all, writable by verified users
+    match /pledges/{pledgeId} {
+      allow read: if true;
+      allow create: if isVerified()
+        && request.resource.data.location is string
+        && request.resource.data.maxPartySize is number;
+      allow update, delete: if isVerified()
+        && (isOwner(resource.data.contactInfo) || isAdmin());
+    }
+
+    // User profiles - only accessible by the user or admins
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
   }
 }

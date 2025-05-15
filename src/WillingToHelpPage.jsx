@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { collection, addDoc, query, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, query, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
+import { getAuth } from "firebase/auth";
+import { isContentAppropriate, sanitizeContent } from "./utils/contentModeration";
 import "./App.css";
 
 function WillingToHelpPage() {
@@ -9,12 +11,16 @@ function WillingToHelpPage() {
   const [location, setLocation] = useState("");
   const [spaceType, setSpaceType] = useState("");
   const [maxPartySize, setMaxPartySize] = useState("");
-  const [contactInfo, setContactInfo] = useState("");
   const [description, setDescription] = useState("");
   const [nightsOffered, setNightsOffered] = useState("");
   const [willingToHostDisplaced, setWillingToHostDisplaced] = useState(false);
   const [willingToHostEvacuees, setWillingToHostEvacuees] = useState(false);
   const [petFriendly, setPetFriendly] = useState(false);
+  
+  // User profile and contact methods
+  const [userProfile, setUserProfile] = useState(null);
+  const [contactMethods, setContactMethods] = useState({});
+  const [selectedContactMethods, setSelectedContactMethods] = useState({});
 
   // State for filtering and displaying requests
   const [requests, setRequests] = useState([]);
@@ -28,6 +34,39 @@ function WillingToHelpPage() {
     useState(false);
   const [filterNoPets, setFilterNoPets] = useState(false);
 
+  // Fetch user profile and contact methods
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const auth = getAuth();
+      if (!auth.currentUser) return;
+      
+      try {
+        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserProfile(userData);
+          
+          if (userData.contactMethods) {
+            setContactMethods(userData.contactMethods);
+            
+            // Initialize selected contact methods (default to all shared methods)
+            const initialSelected = {};
+            Object.entries(userData.contactMethods).forEach(([method, details]) => {
+              if (details.share && details.value) {
+                initialSelected[method] = true;
+              }
+            });
+            setSelectedContactMethods(initialSelected);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, []);
+  
   // Fetch requests from Firestore with realtime updates
   useEffect(() => {
     const fetchRequests = async () => {
@@ -89,24 +128,108 @@ function WillingToHelpPage() {
 
   // Submit a pledge
   const submitPledge = async () => {
-    if (!name || !location || !spaceType || !contactInfo || !nightsOffered) {
-      alert("Please fill in all required fields.");
+    // Validate all fields
+    const validationErrors = [];
+    
+    if (!name || name.trim().length < 2) {
+      validationErrors.push("Please enter a valid name (at least 2 characters)");
+    } else if (!isContentAppropriate(name)) {
+      validationErrors.push("Please avoid using inappropriate language in the name field");
+    }
+    
+    if (!location || location.trim().length < 3) {
+      validationErrors.push("Please enter a valid location (at least 3 characters)");
+    } else if (!isContentAppropriate(location)) {
+      validationErrors.push("Please avoid using inappropriate language in the location field");
+    }
+    
+    if (!spaceType || spaceType.trim().length < 2) {
+      validationErrors.push("Please specify the type of space you're offering");
+    } else if (!isContentAppropriate(spaceType)) {
+      validationErrors.push("Please avoid using inappropriate language in the space type field");
+    }
+    
+    // Check description for inappropriate content
+    if (description && !isContentAppropriate(description)) {
+      validationErrors.push("Please avoid using inappropriate language in the description");
+    }
+    
+    // Validate that at least one contact method is selected
+    const hasSelectedContact = Object.values(selectedContactMethods).some(selected => selected);
+    if (!hasSelectedContact) {
+      validationErrors.push("Please select at least one contact method to share");
+    }
+    
+    // Check if user has any shared contact methods
+    const hasSharedContacts = Object.entries(contactMethods).some(
+      ([method, details]) => details.share && details.value && selectedContactMethods[method]
+    );
+    
+    if (!hasSharedContacts) {
+      validationErrors.push("Please add and share at least one contact method in your profile");
+    }
+    
+    // Validate number fields
+    if (maxPartySize !== "" && (isNaN(parseInt(maxPartySize)) || parseInt(maxPartySize) <= 0)) {
+      validationErrors.push("Party size must be a positive number");
+    }
+    
+    // Check nights offered - can be "any" or a number
+    if (!nightsOffered) {
+      validationErrors.push("Please specify how many nights you can offer");
+    } else if (
+      nightsOffered.toLowerCase() !== "any" &&
+      (isNaN(parseInt(nightsOffered)) || parseInt(nightsOffered) <= 0)
+    ) {
+      validationErrors.push("Nights offered must be 'any' or a positive number");
+    }
+    
+    // Show validation errors if any
+    if (validationErrors.length > 0) {
+      alert("Please fix the following issues:\n• " + validationErrors.join("\n• "));
+      return;
+    }
+
+    // Check if user is authenticated
+    const auth = getAuth();
+    if (!auth.currentUser) {
+      alert("You must be logged in to submit a pledge.");
       return;
     }
 
     try {
+      // Get selected contact methods to share
+      const sharedContactInfo = {};
+      Object.entries(contactMethods).forEach(([method, details]) => {
+        if (details.share && details.value && selectedContactMethods[method]) {
+          sharedContactInfo[method] = {
+            value: details.value,
+            verified: details.verified
+          };
+        }
+      });
+      
+      // Sanitize text content before submission
+      const sanitizedName = sanitizeContent(name);
+      const sanitizedLocation = sanitizeContent(location);
+      const sanitizedSpaceType = sanitizeContent(spaceType);
+      const sanitizedDescription = sanitizeContent(description);
+      
       await addDoc(collection(db, "pledges"), {
-        name,
-        location,
-        spaceType,
+        name: sanitizedName,
+        location: sanitizedLocation,
+        spaceType: sanitizedSpaceType,
         maxPartySize: maxPartySize === "" ? "Any" : parseInt(maxPartySize),
-        contactInfo,
-        description,
+        contactInfo: auth.currentUser.email, // Primary contact (always email)
+        contactMethods: sharedContactInfo, // All selected contact methods
+        description: sanitizedDescription,
         nightsOffered:
-          nightsOffered === "any" ? "Any" : parseInt(nightsOffered),
+          nightsOffered.toLowerCase() === "any" ? "Any" : parseInt(nightsOffered),
         willingToHostDisplaced,
         willingToHostEvacuees,
         petFriendly,
+        userId: auth.currentUser.uid, // Link to user account
+        createdAt: new Date(), // Add timestamp
       });
       alert(
         "Thank you for your kindness! Your pledge has been submitted successfully.",
@@ -115,7 +238,14 @@ function WillingToHelpPage() {
       setLocation("");
       setSpaceType("");
       setMaxPartySize("");
-      setContactInfo("");
+      // Reset selected contact methods
+      const initialSelected = {};
+      Object.entries(contactMethods).forEach(([method, details]) => {
+        if (details.share && details.value) {
+          initialSelected[method] = true;
+        }
+      });
+      setSelectedContactMethods(initialSelected);
       setDescription("");
       setNightsOffered("");
       setWillingToHostDisplaced(false);
@@ -189,12 +319,32 @@ function WillingToHelpPage() {
             Pet Friendly
           </label>
         </div>
-        <input
-          type="text"
-          placeholder="Contact Info (e.g., email@example.com or 555-555-5555)"
-          value={contactInfo}
-          onChange={(e) => setContactInfo(e.target.value)}
-        />
+        <div className="contact-methods-selection">
+          <h4>Contact Methods to Share</h4>
+          {Object.entries(contactMethods).map(([method, details]) => (
+            details.share && details.value ? (
+              <div key={method} className="contact-method-option">
+                <label className="styled-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedContactMethods[method] || false}
+                    onChange={(e) => setSelectedContactMethods({
+                      ...selectedContactMethods,
+                      [method]: e.target.checked
+                    })}
+                  />
+                  {method.charAt(0).toUpperCase() + method.slice(1)}: {details.value}
+                  {details.verified && <span className="verified-badge"> ✓</span>}
+                </label>
+              </div>
+            ) : null
+          ))}
+          {Object.entries(contactMethods).filter(([_, details]) => details.share && details.value).length === 0 && (
+            <p className="no-contacts-message">
+              No contact methods available. Please add contact methods in your profile.
+            </p>
+          )}
+        </div>
         <textarea
           placeholder="Description (optional)"
           value={description}
