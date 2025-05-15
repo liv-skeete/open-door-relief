@@ -283,8 +283,8 @@ function ProfilePage() {
         alert(`Error sending verification code: ${error.message}`);
         setVerificationInProgress(null);
       }
-    } else {
-      // For other methods, use our simulated verification
+    } else if (method !== 'other') {
+      // For other methods (except 'other' type), use our simulated verification
       // Generate a random 6-digit code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       console.log(`Verification code for ${method}: ${code}`);
@@ -540,9 +540,17 @@ function ProfilePage() {
                 </div>
               ) : null;
             })}
-            {Object.entries(contactMethods).some(([_, details]) => details.value && !details.verified) && (
+            {Object.entries(contactMethods).some(([method, details]) =>
+              details.value && (method !== 'other' && !details.verified)
+            ) && (
               <div className="verification-disclaimer">
                 <p>⚠️ Unverified contact methods may reduce trust in your requests and pledges.</p>
+              </div>
+            )}
+            
+            {contactMethods.other?.value && (
+              <div className="verification-disclaimer other-warning">
+                <p>⚠️ Note: 'Other' contact methods cannot be verified and will be displayed with a warning to users.</p>
               </div>
             )}
             <button onClick={() => setEditingProfile(true)} className="edit-profile-btn">
@@ -955,7 +963,7 @@ function ProfileContactForm({ contactMethods, onSave, onCancel }) {
                   pattern={method === 'phone' ? "[0-9\\-\\+\\(\\) ]+" : undefined}
                 />
                 
-                {method !== 'email' && details.value && details.value.trim() !== '' && !details.verified && (
+                {method !== 'email' && method !== 'other' && details.value && details.value.trim() !== '' && !details.verified && (
                   <button
                     type="button"
                     className="verify-button"
@@ -1019,7 +1027,9 @@ function ProfileContactForm({ contactMethods, onSave, onCancel }) {
             </div>
           ) : details.value && (
             <div className="unverified-status">
-              ⚠️ Unverified - Verification required before sharing
+              {method === 'other' ?
+                "⚠️ Other contact methods cannot be verified - Users will be warned when viewing this information" :
+                "⚠️ Unverified - Verification required before sharing"}
             </div>
           )}
         </div>
@@ -1028,7 +1038,8 @@ function ProfileContactForm({ contactMethods, onSave, onCancel }) {
       
       <div className="verification-note">
         <p>Note: Email verification is handled through your account settings.</p>
-        <p>For other contact methods, click "Verify" to receive a verification code.</p>
+        <p>For phone numbers, click "Verify" to receive a verification code.</p>
+        <p>Other contact methods cannot be verified but will be displayed with a warning.</p>
         <p className="warning">Unverified contact methods may reduce trust in your requests and pledges.</p>
       </div>
       
