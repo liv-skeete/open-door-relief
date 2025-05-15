@@ -4,6 +4,9 @@ import InNeedPage from "./InNeedPage";
 import WillingToHelpPage from "./WillingToHelpPage";
 import ProfilePage from "./ProfilePage";
 import VerificationPendingPage from "./VerificationPendingPage";
+import MapSearchPage from "./MapSearchPage";
+import ReliefCentersPage from "./ReliefCentersPage";
+import VerificationPage from "./VerificationPage";
 import AuthSwitch from "./components/Auth/AuthSwitch";
 import NavMenu from "./components/NavMenu";
 import "./App.css";
@@ -128,6 +131,48 @@ function App() {
                 <Navigate to="/verification-pending" />
               ) : (
                 <Navigate to="/auth?redirect=/profile" />
+              )
+            }
+          />
+
+          {/* Map Search Page */}
+          <Route
+            path="/map-search"
+            element={
+              canAccessProtectedRoutes ? (
+                <MapSearchPage />
+              ) : isLoggedIn ? (
+                <Navigate to="/verification-pending" />
+              ) : (
+                <Navigate to="/auth?redirect=/map-search" />
+              )
+            }
+          />
+
+          {/* Relief Centers Page */}
+          <Route
+            path="/relief-centers"
+            element={
+              canAccessProtectedRoutes ? (
+                <ReliefCentersPage />
+              ) : isLoggedIn ? (
+                <Navigate to="/verification-pending" />
+              ) : (
+                <Navigate to="/auth?redirect=/relief-centers" />
+              )
+            }
+          />
+
+          {/* Enhanced Verification Page */}
+          <Route
+            path="/verification"
+            element={
+              canAccessProtectedRoutes ? (
+                <VerificationPage />
+              ) : isLoggedIn ? (
+                <Navigate to="/verification-pending" />
+              ) : (
+                <Navigate to="/auth?redirect=/verification" />
               )
             }
           />
