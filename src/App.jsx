@@ -7,6 +7,8 @@ import VerificationPendingPage from "./VerificationPendingPage";
 import MapSearchPage from "./MapSearchPage";
 import ReliefCentersPage from "./ReliefCentersPage";
 import VerificationPage from "./VerificationPage";
+import DonationPage from "./DonationPage";
+import AdminDashboard from "./AdminDashboard";
 import AuthSwitch from "./components/Auth/AuthSwitch";
 import NavMenu from "./components/NavMenu";
 import "./App.css";
@@ -173,6 +175,26 @@ function App() {
                 <Navigate to="/verification-pending" />
               ) : (
                 <Navigate to="/auth?redirect=/verification" />
+              )
+            }
+          />
+
+          {/* Donation Page */}
+          <Route
+            path="/donate"
+            element={<DonationPage />}
+          />
+
+          {/* Admin Dashboard */}
+          <Route
+            path="/admin"
+            element={
+              canAccessProtectedRoutes ? (
+                <AdminDashboard />
+              ) : isLoggedIn ? (
+                <Navigate to="/verification-pending" />
+              ) : (
+                <Navigate to="/auth?redirect=/admin" />
               )
             }
           />
