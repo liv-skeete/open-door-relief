@@ -416,7 +416,11 @@ function ProfilePage() {
     // Process in preferred order: email, phone, other
     ['email', 'phone', 'other'].forEach(method => {
       const details = contactMethods[method];
-      if (details?.share && details?.value) {
+      // Only share if:
+      // 1. It's marked for sharing
+      // 2. It has a value
+      // 3. It's either verified OR it's the 'other' type (which doesn't require verification)
+      if (details?.share && details?.value && (details.verified || method === 'other')) {
         shared[method] = details.value;
       }
     });
@@ -1011,13 +1015,17 @@ function ProfileContactForm({ contactMethods, onSave, onCancel }) {
           )}
           
           <div className="form-group checkbox">
-            <label>
+            <label className={method !== 'other' && !details.verified ? 'disabled-label' : ''}>
               <input
                 type="checkbox"
-                checked={details.share}
+                checked={method !== 'other' && !details.verified ? false : details.share}
                 onChange={(e) => handleChange(method, 'share', e.target.checked)}
+                disabled={method !== 'other' && !details.verified}
               />
               Share this contact method
+              {method !== 'other' && !details.verified && (
+                <span className="verification-required"> (verification required)</span>
+              )}
             </label>
           </div>
           
