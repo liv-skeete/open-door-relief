@@ -23,7 +23,10 @@ function MapSearchPage() {
 
     // Load Google Maps API script
     const googleMapsScript = document.createElement("script");
-    googleMapsScript.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places`;
+    // Note: In a production app, you would use an actual API key
+    // For demo purposes, we'll use a placeholder that will show the map UI
+    // but with a development watermark
+    googleMapsScript.src = `https://maps.googleapis.com/maps/api/js?libraries=places`;
     googleMapsScript.async = true;
     googleMapsScript.defer = true;
     googleMapsScript.onload = initializeMap;
