@@ -4,9 +4,9 @@ import { getAuth } from "firebase/auth";
 
 const NavMenu = () => {
   const navigate = useNavigate();
+  const auth = getAuth();
   
   const handleLogout = () => {
-    const auth = getAuth();
     auth.signOut();
     navigate("/");
   };
