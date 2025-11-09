@@ -1,0 +1,41 @@
+{
+  "name": "Open Door Relief",
+  "short_name": "Relief App",
+  "description": "Connecting communities during disasters",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3498db",
+  "icons": [
+    {
+      "src": "/public/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/vite.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "I Need Help",
+      "short_name": "Need Help",
+      "description": "Request assistance during a disaster",
+      "url": "/in-need",
+      "icons": [{ "src": "/assets/help-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "I Can Help",
+      "short_name": "Offer Help",
+      "description": "Offer assistance to those in need",
+      "url": "/willing-to-help",
+      "icons": [{ "src": "/assets/offer-icon.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

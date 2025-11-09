@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import Form from '../Form/Form';
+import FormInput from '../Form/FormInput';
+import FormButton from '../Form/FormButton';
+import ErrorDisplay from '../Form/ErrorDisplay';
 
 const LoginForm = ({ toggleForm, onAuthSuccess }) => {
   const [email, setEmail] = useState("");
@@ -22,21 +24,8 @@ const LoginForm = ({ toggleForm, onAuthSuccess }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Special handling for test account
-      const isTestAccount = email.toLowerCase() === 'test@reliefapp.org';
-      
-      if (isTestAccount) {
-        // Test account bypasses verification
-        setEmail(""); // Clear the email field
-        setPassword(""); // Clear the password field
-        onAuthSuccess(); // Use the callback for successful authentication
-        return;
-      }
-      
-      // For regular accounts, check verification status
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      
-      if (user.emailVerified || (userDoc.exists() && userDoc.data().emailVerified)) {
+      // Check verification status - all users must verify their email
+      if (user.emailVerified) {
         // Email is verified
         setEmail(""); // Clear the email field
         setPassword(""); // Clear the password field
@@ -57,8 +46,12 @@ const LoginForm = ({ toggleForm, onAuthSuccess }) => {
         setError("Too many failed login attempts. Please try again later or reset your password.");
       } else if (err.code === 'auth/invalid-credential') {
         setError("Invalid login credentials. Please check your email and password.");
+      } else if (err.code === 'auth/user-disabled') {
+        setError("This account has been disabled. Please contact support.");
+      } else if (err.code === 'auth/invalid-email') {
+        setError("Invalid email address format.");
       } else {
-        setError(err.message);
+        setError(`Authentication error: ${err.message}`);
       }
     }
   };
@@ -116,7 +109,7 @@ const LoginForm = ({ toggleForm, onAuthSuccess }) => {
 
   return (
     <div className="form-container">
-      {error && <p className="error">{error}</p>}
+      <ErrorDisplay error={error} />
       {verificationSent && (
         <p className="verification-sent">
           Verification email sent! Please check your inbox and spam folder.
@@ -130,45 +123,25 @@ const LoginForm = ({ toggleForm, onAuthSuccess }) => {
           Resend Verification Email
         </button>
       )}
-      <form onSubmit={handleLogin}>
-        <div className="form-group">
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            required
-          />
-        </div>
-        <button type="submit" className="form-button">
-          Login
-        </button>
-      </form>
-      {import.meta.env.DEV && (
-        <div className="test-credentials-banner">
-          <button
-            onClick={() => {
-              setEmail('test@reliefapp.org');
-              setPassword('test1234');
-            }}
-            className="test-button"
-          >
-            Load Test Credentials
-          </button>
-          <p className="test-warning">Development mode active</p>
-        </div>
-      )}
+      <Form onSubmit={handleLogin}>
+        <FormInput
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          required
+        />
+        <FormInput
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter your password"
+          required
+        />
+        <FormButton>Login</FormButton>
+      </Form>
       <div className="form-links">
         <p>
           Don't have an account? <a href="#" onClick={(e) => { e.preventDefault(); toggleForm(); }}>Sign up</a>

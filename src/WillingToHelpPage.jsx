@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { collection, addDoc, query, onSnapshot, doc, getDoc } from "firebase/firestore";
+import ContactLinks from "./components/Contact/ContactLinks";
 import { db } from "./firebase";
 import { getAuth } from "firebase/auth";
 import { isContentAppropriate, sanitizeContent } from "./utils/contentModeration";
@@ -447,6 +448,7 @@ function WillingToHelpPage() {
                 <strong>Contact:</strong>{" "}
                 {request.contactInfo || "No contact provided"}
               </p>
+              <ContactLinks contactInfo={request.contactMethods} />
               <p>
                 <strong>Additional Notes:</strong>{" "}
                 {request.additionalNotes || "None provided"}

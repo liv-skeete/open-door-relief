@@ -86,6 +86,20 @@ body {
   min-height: 70vh;
 }
 
+.home-title {
+  font-size: 2.5rem;
+  color: #6c9a8b;
+  margin: 20px 0 10px 0;
+  font-weight: 600;
+}
+
+.home-subtitle {
+  font-size: 1.3rem;
+  color: #666;
+  margin: 0 0 30px 0;
+  font-weight: 300;
+}
+
 .home-buttons {
   display: flex;
   gap: 20px;

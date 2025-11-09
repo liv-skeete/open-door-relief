@@ -1,0 +1,28 @@
+.reputation-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.reputation-container h4 {
+  margin: 0;
+}
+
+.thumb-up,
+.thumb-down {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 5px 10px;
+}
+
+.thumb-up:hover {
+  background-color: #e8f5e9; /* a light green */
+}
+
+.thumb-down:hover {
+  background-color: #ffebee; /* a light red */
+}

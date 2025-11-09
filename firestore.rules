@@ -7,66 +7,52 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isTestAccount() {
-      return isSignedIn() && request.auth.token.email.toLowerCase() == 'test@reliefapp.org';
-    }
-    
     function isAdmin() {
       return isSignedIn() && request.auth.token.email.matches('.*@opendoorrelief\\.org$');
     }
     
-    function isDeveloper() {
-      return isTestAccount() || isAdmin();
-    }
-    
     function isVerified() {
-      return isSignedIn() && (
-        request.auth.token.email_verified == true ||
-        isTestAccount()
-      );
+      return isSignedIn() && request.auth.token.email_verified == true;
     }
     
     function isValidEmail(email) {
       return email.matches('^[^@]+@[^@]+\\.[^@]+$');
     }
     
-    function isOwner(contactInfo) {
-      return isSignedIn() && request.auth.token.email == contactInfo;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
-    
-    // DEVELOPMENT MODE - Allows test account full access
-    // IMPORTANT: Remove or modify before production deployment!
-    match /{document=**} {
-      allow read, write: if isDeveloper();
-    }
-    
-    // The rules below will apply for non-developer accounts
-    // and will be the primary rules in production
     
     // Public requests - readable by all, writable by verified users
     match /requests/{requestId} {
       allow read: if true;
       allow create: if isVerified()
-        && request.resource.data.name is string
+        && request.resource.data.userId == request.auth.uid
         && request.resource.data.location is string
-        && request.resource.data.partySize is number;
+        && request.resource.data.partySize is number
+        && request.resource.data.emergency is string;
       allow update, delete: if isVerified()
-        && (isOwner(resource.data.contactInfo) || isAdmin());
+        && (isOwner(resource.data.userId) || isAdmin());
     }
 
     // Public pledges - readable by all, writable by verified users
     match /pledges/{pledgeId} {
       allow read: if true;
       allow create: if isVerified()
+        && request.resource.data.userId == request.auth.uid
         && request.resource.data.location is string
-        && request.resource.data.maxPartySize is number;
+        && request.resource.data.maxPartySize is number
+        && request.resource.data.spaceType is string;
       allow update, delete: if isVerified()
-        && (isOwner(resource.data.contactInfo) || isAdmin());
+        && (isOwner(resource.data.userId) || isAdmin());
     }
 
     // User profiles - only accessible by the user or admins
     match /users/{userId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
     }
     
     // Relief centers - readable by all, writable by admins

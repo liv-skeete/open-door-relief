@@ -28,16 +28,14 @@ function AdminDashboard() {
         return;
       }
       
-      // In a real app, you would check against a list of admin users in Firestore
-      // For demo purposes, we'll consider the test account as admin
-      const isTestAccount = auth.currentUser.email.toLowerCase() === 'test@reliefapp.org';
+      // Check if user is admin (only @opendoorrelief.org emails)
       const isOrgEmail = auth.currentUser.email.toLowerCase().endsWith('@opendoorrelief.org');
       
-      setIsAdmin(isTestAccount || isOrgEmail);
+      setIsAdmin(isOrgEmail);
       setLoading(false);
       
       // If admin, fetch data
-      if (isTestAccount || isOrgEmail) {
+      if (isOrgEmail) {
         fetchStats();
       }
     };
@@ -78,12 +76,6 @@ function AdminDashboard() {
         ...doc.data()
       }));
       
-      // Fetch donations
-      const donationsSnapshot = await getDocs(collection(db, "donations"));
-      const donationsData = donationsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
       
       // Calculate stats
       const verifiedUsersCount = usersData.filter(user => 
@@ -96,8 +88,7 @@ function AdminDashboard() {
         verifiedUsers: verifiedUsersCount,
         totalRequests: requestsData.length,
         totalPledges: pledgesData.length,
-        totalReliefCenters: centersData.length,
-        totalDonations: donationsData.length
+        totalReliefCenters: centersData.length
       });
       
     } catch (error) {
@@ -124,8 +115,6 @@ function AdminDashboard() {
         return <div>Pledges Management (Coming Soon)</div>;
       case "reliefCenters":
         return <div>Relief Centers Management (Coming Soon)</div>;
-      case "donations":
-        return <div>Donations Management (Coming Soon)</div>;
       case "settings":
         return <div>Admin Settings (Coming Soon)</div>;
       default:
@@ -187,7 +176,7 @@ function AdminDashboard() {
           <p>
             Welcome to the Open Door Relief admin dashboard. This interface provides
             an overview of platform activity and allows administrators to manage users,
-            requests, pledges, relief centers, and donations.
+            requests, pledges, and relief centers.
           </p>
           <p>
             Full management functionality will be implemented in the next phase of development.
@@ -246,12 +235,6 @@ function AdminDashboard() {
           onClick={() => setActiveTab("reliefCenters")}
         >
           Relief Centers
-        </button>
-        <button 
-          className={activeTab === "donations" ? "active" : ""}
-          onClick={() => setActiveTab("donations")}
-        >
-          Donations
         </button>
         <button 
           className={activeTab === "settings" ? "active" : ""}

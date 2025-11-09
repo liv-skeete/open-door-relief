@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
+import Form from '../Form/Form';
+import FormInput from '../Form/FormInput';
+import FormButton from '../Form/FormButton';
+import ErrorDisplay from '../Form/ErrorDisplay';
 
 const SignupForm = ({ toggleForm, onAuthSuccess }) => {
   const navigate = useNavigate();
@@ -20,29 +24,28 @@ const SignupForm = ({ toggleForm, onAuthSuccess }) => {
       return;
     }
 
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Special handling for test account
-      const isTestAccount = email.toLowerCase() === 'test@reliefapp.org';
-      
       // Create user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
-        emailVerified: isTestAccount, // Auto-verify test account
+        emailVerified: false, // All users start unverified
+        displayName: "",
         createdAt: serverTimestamp()
       });
       
-      // Send verification email for non-test accounts
-      if (!isTestAccount) {
-        await sendEmailVerification(user);
-        // Redirect to verification pending page instead of showing error
-        navigate("/verification-pending");
-      } else {
-        // Test account is auto-verified
-        onAuthSuccess(); // Proceed with authentication
-      }
+      // Send verification email to all new users
+      await sendEmailVerification(user);
+      
+      // Redirect to verification pending page
+      navigate("/verification-pending");
       
       setEmail(""); // Clear the email field
       setPassword(""); // Clear the password field
@@ -52,53 +55,49 @@ const SignupForm = ({ toggleForm, onAuthSuccess }) => {
       if (err.code === 'auth/email-already-in-use') {
         setError("This email is already registered. Please use a different email or try logging in instead.");
       } else if (err.code === 'auth/weak-password') {
-        setError("Please use a stronger password (at least 6 characters).");
+        setError("Please use a stronger password (at least 6 characters with a mix of upper/lowercase, numbers, and symbols).");
       } else if (err.code === 'auth/invalid-email') {
         setError("Please enter a valid email address.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError("Email/password sign up is currently disabled. Please try again later.");
+      } else if (err.code === 'auth/too-many-requests') {
+        setError("Too many sign-up attempts. Please try again later.");
       } else {
-        setError(err.message);
+        setError(`Sign-up error: ${err.message}`);
       }
     }
   };
 
   return (
     <div className="form-container">
-      {error && <p className="error">{error}</p>}
-      <form onSubmit={handleSignup}>
-        <div className="form-group">
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Confirm Password</label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm your password"
-            required
-          />
-        </div>
-        <button type="submit" className="form-button">
-          Sign Up
-        </button>
-      </form>
+      <ErrorDisplay error={error} />
+      <Form onSubmit={handleSignup}>
+        <FormInput
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          required
+        />
+        <FormInput
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter your password"
+          required
+        />
+        <FormInput
+          label="Confirm Password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirm your password"
+          required
+        />
+        <FormButton>Sign Up</FormButton>
+      </Form>
       <p>
         Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); toggleForm(); }}>Login</a>
       </p>

@@ -4,7 +4,10 @@ import { doc, getDoc, collection, query, where, getDocs, deleteDoc, updateDoc, s
 import { db } from "./firebase";
 import VerificationStatus from "./components/Auth/VerificationStatus";
 import { isContentAppropriate, sanitizeContent } from "./utils/contentModeration";
+import ContactMethodSelector from "./components/Contact/ContactMethodSelector";
 import "./App.css";
+import Reputation from "./components/Reputation/Reputation";
+import ReportUser from "./components/Reputation/ReportUser";
 
 // Create a context for profile-related functions and state
 const ProfileContext = createContext(null);
@@ -36,9 +39,6 @@ function ProfilePage() {
       }
 
       try {
-        // Check if this is the test account
-        const isTestAccount = auth.currentUser.email.toLowerCase() === 'test@reliefapp.org';
-        
         // Fetch user profile
         const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
         if (userDoc.exists()) {
@@ -47,24 +47,7 @@ function ProfilePage() {
           
           // Initialize contact methods from user data or with defaults
           if (data.contactMethods) {
-            // For test account, ensure all contact methods are verified
-            if (isTestAccount) {
-              const verifiedMethods = {};
-              Object.entries(data.contactMethods).forEach(([method, details]) => {
-                verifiedMethods[method] = {
-                  ...details,
-                  verified: method === 'email' ? true : details.verified
-                };
-              });
-              setContactMethods(verifiedMethods);
-              
-              // Update Firestore with verified methods for test account
-              await updateDoc(doc(db, "users", auth.currentUser.uid), {
-                contactMethods: verifiedMethods
-              });
-            } else {
-              setContactMethods(data.contactMethods);
-            }
+            setContactMethods(data.contactMethods);
           } else {
             // Migrate old user data to new format
             const updatedData = {
@@ -72,11 +55,11 @@ function ProfilePage() {
               contactMethods: {
                 email: {
                   value: auth.currentUser.email,
-                  verified: isTestAccount || auth.currentUser.emailVerified,
+                  verified: auth.currentUser.emailVerified,
                   share: true
                 },
-                phone: { value: "", verified: isTestAccount, share: false },
-                other: { value: "", verified: isTestAccount, share: false }
+                phone: { value: "", verified: false, share: false },
+                other: { value: "", verified: false, share: false }
               }
             };
             setContactMethods(updatedData.contactMethods);
@@ -86,15 +69,15 @@ function ProfilePage() {
           // Create a basic user document if it doesn't exist
           const newUserData = {
             email: auth.currentUser.email,
-            emailVerified: isTestAccount || auth.currentUser.emailVerified,
+            emailVerified: auth.currentUser.emailVerified,
             contactMethods: {
               email: {
                 value: auth.currentUser.email,
-                verified: isTestAccount || auth.currentUser.emailVerified,
+                verified: auth.currentUser.emailVerified,
                 share: true
               },
-              phone: { value: "", verified: isTestAccount, share: false },
-              other: { value: "", verified: isTestAccount, share: false }
+              phone: { value: "", verified: false, share: false },
+              other: { value: "", verified: false, share: false }
             }
           };
           setUserData(newUserData);
@@ -205,10 +188,10 @@ function ProfilePage() {
       return new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
         'callback': () => {
-          console.log('reCAPTCHA verified');
+          // reCAPTCHA verified
         },
         'expired-callback': () => {
-          console.log('reCAPTCHA expired');
+          // reCAPTCHA expired
           alert('Verification session expired. Please try again.');
           setVerificationInProgress(null);
         }
@@ -394,6 +377,32 @@ function ProfilePage() {
       alert("Failed to update profile. Please try again.");
     }
   };
+
+  // Toggle pledge visibility
+  const togglePledgeVisibility = async (pledgeId, isPublic) => {
+    try {
+      await updateDoc(doc(db, "pledges", pledgeId), { public: isPublic });
+      setUserPledges(userPledges.map(pledge =>
+        pledge.id === pledgeId ? { ...pledge, public: isPublic } : pledge
+      ));
+    } catch (error) {
+      console.error("Error updating pledge visibility:", error);
+      alert("Failed to update pledge visibility. Please try again.");
+    }
+  };
+
+  // Toggle request visibility
+  const toggleRequestVisibility = async (requestId, isPublic) => {
+    try {
+      await updateDoc(doc(db, "requests", requestId), { public: isPublic });
+      setUserRequests(userRequests.map(request =>
+        request.id === requestId ? { ...request, public: isPublic } : request
+      ));
+    } catch (error) {
+      console.error("Error updating request visibility:", error);
+      alert("Failed to update request visibility. Please try again.");
+    }
+  };
   
   // Get the preferred contact method to display
   const getPreferredContactInfo = () => {
@@ -452,6 +461,16 @@ function ProfilePage() {
         <div className="item-actions">
           <button onClick={() => setEditingItem(request)}>Edit</button>
           <button onClick={() => handleDeleteRequest(request.id)}>Delete</button>
+          <div className="visibility-toggle">
+            <label>
+              <input
+                type="checkbox"
+                checked={request.public !== false}
+                onChange={e => toggleRequestVisibility(request.id, e.target.checked)}
+              />
+              {request.public !== false ? 'Visible' : 'Hidden'}
+            </label>
+          </div>
         </div>
       </div>
     );
@@ -481,6 +500,16 @@ function ProfilePage() {
         <div className="item-actions">
           <button onClick={() => setEditingItem(pledge)}>Edit</button>
           <button onClick={() => handleDeletePledge(pledge.id)}>Delete</button>
+          <div className="visibility-toggle">
+            <label>
+              <input
+                type="checkbox"
+                checked={pledge.public !== false}
+                onChange={e => togglePledgeVisibility(pledge.id, e.target.checked)}
+              />
+              {pledge.public !== false ? 'Visible' : 'Hidden'}
+            </label>
+          </div>
         </div>
       </div>
     );
@@ -497,6 +526,56 @@ function ProfilePage() {
   return (
     <div className="page">
       <h2>My Profile</h2>
+      
+      {/* Demographic Information Section */}
+      <div className="profile-section">
+        <h3>Demographic Information</h3>
+        <div className="demographics-grid">
+          <div>
+            <label>Age</label>
+            <input
+              type="number"
+              value={userData?.age || ''}
+              onChange={e => setUserData({...userData, age: e.target.value})}
+              min="1"
+              max="120"
+            />
+          </div>
+          <div>
+            <label>Gender</label>
+            <select
+              value={userData?.gender || ''}
+              onChange={e => setUserData({...userData, gender: e.target.value})}
+            >
+              <option value="">Select</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="other">Other</option>
+              <option value="prefer-not-to-say">Prefer not to say</option>
+            </select>
+          </div>
+          <div>
+            <label>Email</label>
+            <div className="email-display">
+              {contactMethods.email?.value || auth.currentUser?.email}
+              {contactMethods.email?.verified ? (
+                <span className="verified-badge">Verified</span>
+              ) : (
+                <span className="unverified-badge">Not Verified</span>
+              )}
+            </div>
+          </div>
+          <div className="reputation-section">
+            <Reputation userId={auth.currentUser.uid} />
+            <ReportUser userId={auth.currentUser.uid} />
+          </div>
+        </div>
+        <div className="reputation-section">
+          <Reputation userId={auth.currentUser.uid} />
+          <ReportUser userId={auth.currentUser.uid} />
+        </div>
+      </div>
       
       {/* Email Verification Status */}
       <VerificationStatus />
@@ -963,7 +1042,7 @@ function ProfileContactForm({ contactMethods, onSave, onCancel }) {
                   value={details.value}
                   onChange={(e) => handleChange(method, 'value', e.target.value)}
                   placeholder={method === 'phone' ? "Enter phone (e.g., 123-456-7890)" : `Enter your ${method}`}
-                  disabled={method === 'email'} // Email is managed by Firebase Auth
+                  disabled={method === 'email'}
                   pattern={method === 'phone' ? "[0-9\\-\\+\\(\\) ]+" : undefined}
                 />
                 
@@ -971,86 +1050,40 @@ function ProfileContactForm({ contactMethods, onSave, onCancel }) {
                   <button
                     type="button"
                     className="verify-button"
-                    onClick={() => {
-                      // Ensure the method is passed correctly
-                      console.log(`Verifying ${method}: ${details.value}`);
-                      startVerification(method);
-                    }}
+                    onClick={() => startVerification(method)}
                   >
-                    Verify
+                   Verify
                   </button>
                 )}
               </div>
-              {method === 'phone' && (
-                <small className="input-hint">Format: Must contain at least 10 digits. Can include +, -, (), and spaces.</small>
-              )}
             </div>
-            
             {verificationInProgress === method && (
-            <div className="verification-code-input">
-              <input
-                type="text"
-                placeholder="Enter 6-digit code"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                maxLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => verifyContactMethod(method)}
-              >
-                Submit
-              </button>
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={() => {
-                  setVerificationInProgress(null);
-                  setVerificationCode("");
-                }}
-              >
-                Cancel
-              </button>
+              <div className="verification-input">
+                <input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter 6-digit code"
+                  maxLength="6"
+                />
+                <button type="button" onClick={() => verifyContactMethod(method)}>
+                  Submit Code
+                </button>
+              </div>
+            )}
+            <div className="form-group checkbox">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={details.share}
+                  onChange={(e) => handleChange(method, 'share', e.target.checked)}
+                />
+                Share this contact method
+              </label>
             </div>
-          )}
-          
-          <div className="form-group checkbox">
-            <label className={method !== 'other' && !details.verified ? 'disabled-label' : ''}>
-              <input
-                type="checkbox"
-                checked={method !== 'other' && !details.verified ? false : details.share}
-                onChange={(e) => handleChange(method, 'share', e.target.checked)}
-                disabled={method !== 'other' && !details.verified}
-              />
-              Share this contact method
-              {method !== 'other' && !details.verified && (
-                <span className="verification-required"> (verification required)</span>
-              )}
-            </label>
           </div>
-          
-          {details.verified ? (
-            <div className="verified-status">
-              ✓ Verified
-            </div>
-          ) : details.value && (
-            <div className="unverified-status">
-              {method === 'other' ?
-                "⚠️ Other contact methods cannot be verified - Users will be warned when viewing this information" :
-                "⚠️ Unverified - Verification required before sharing"}
-            </div>
-          )}
-        </div>
-      );
+        )
       })}
-      
-      <div className="verification-note">
-        <p>Note: Email verification is handled through your account settings.</p>
-        <p>For phone numbers, click "Verify" to receive a verification code.</p>
-        <p>Other contact methods cannot be verified but will be displayed with a warning.</p>
-        <p className="warning">Unverified contact methods may reduce trust in your requests and pledges.</p>
-      </div>
-      
       <div className="form-actions">
         <button type="submit">Save Changes</button>
         <button type="button" onClick={onCancel}>Cancel</button>
@@ -1060,3 +1093,4 @@ function ProfileContactForm({ contactMethods, onSave, onCancel }) {
 }
 
 export default ProfilePage;
+  <div id="recaptcha-container"></div>

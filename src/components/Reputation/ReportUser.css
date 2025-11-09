@@ -1,0 +1,17 @@
+.report-user-button {
+  background-color: #f44336; /* Red */
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.report-user-button:hover {
+  background-color: #d32f2f; /* Darker Red */
+}

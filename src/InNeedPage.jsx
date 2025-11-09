@@ -3,9 +3,14 @@ import { collection, addDoc, query, onSnapshot, doc, getDoc } from "firebase/fir
 import { db } from "./firebase";
 import { getAuth } from "firebase/auth";
 import { isContentAppropriate, sanitizeContent } from "./utils/contentModeration";
+import { useOfflineSync } from "./components/OfflineSync/OfflineSyncProvider";
+import { saveItem, getAllItems, STORES } from "./utils/offlineStorage";
+import ContactLinks from "./components/Contact/ContactLinks.jsx";
 import "./App.css";
 
 function InNeedPage() {
+  // Get offline sync context
+  const { isOnline } = useOfflineSync();
   // State for requests
   const [name, setName] = useState("");
   const [partySize, setPartySize] = useState("");
@@ -19,7 +24,7 @@ function InNeedPage() {
   const [additionalNotes, setAdditionalNotes] = useState("");
   
   // User profile and contact methods
-  const [userProfile, setUserProfile] = useState(null);
+  const [, setUserProfile] = useState(null);
   const [contactMethods, setContactMethods] = useState({});
   const [selectedContactMethods, setSelectedContactMethods] = useState({});
 
@@ -68,26 +73,46 @@ function InNeedPage() {
     fetchUserProfile();
   }, []);
   
-  // Fetch pledges from Firestore with realtime updates
+  // Fetch pledges from Firestore with realtime updates or from IndexedDB when offline
   useEffect(() => {
     const fetchPledges = async () => {
       try {
-        const q = query(collection(db, "pledges"));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const fetchedPledges = querySnapshot.docs.map((doc) => ({
-            id: doc.id, // Include document ID for reference
-            ...doc.data()
-          }));
-          setPledges(fetchedPledges);
-        });
-        return () => unsubscribe(); // Cleanup on unmount
+        if (isOnline) {
+          // Online: Use Firestore with realtime updates
+          const q = query(collection(db, "pledges"));
+          const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const fetchedPledges = querySnapshot.docs.map((doc) => ({
+              id: doc.id, // Include document ID for reference
+              ...doc.data()
+            }));
+            setPledges(fetchedPledges);
+            
+            // Save pledges to IndexedDB for offline use
+            fetchedPledges.forEach(async (pledge) => {
+              await saveItem(STORES.PLEDGES, pledge);
+            });
+          });
+          return () => unsubscribe(); // Cleanup on unmount
+        } else {
+          // Offline: Use IndexedDB
+          const offlinePledges = await getAllItems(STORES.PLEDGES);
+          setPledges(offlinePledges);
+        }
       } catch (error) {
         console.error("Error fetching pledges: ", error);
-        alert("Error loading pledges. Please check your connection and permissions.");
+        
+        // Try to get from IndexedDB as fallback
+        try {
+          const offlinePledges = await getAllItems(STORES.PLEDGES);
+          setPledges(offlinePledges);
+        } catch (offlineError) {
+          console.error("Error fetching offline pledges: ", offlineError);
+          alert("Error loading pledges. Please check your connection and permissions.");
+        }
       }
     };
     fetchPledges();
-  }, []);
+  }, [isOnline]);
 
   // Filter pledges
   const filteredPledges = pledges.filter((pledge) => {
@@ -345,7 +370,7 @@ function InNeedPage() {
               </div>
             ) : null
           ))}
-          {Object.entries(contactMethods).filter(([_, details]) => details.share && details.value).length === 0 && (
+          {Object.entries(contactMethods).filter(([, details]) => details.share && details.value).length === 0 && (
             <p className="no-contacts-message">
               No contact methods available. Please add contact methods in your profile.
             </p>
@@ -358,9 +383,8 @@ function InNeedPage() {
         />
         <button onClick={submitRequest}>Submit Request</button>
       </div>
-
       <div className="filters">
-        <h3>Filter Pledges</h3>
+        <h3>Available Pledges</h3>
         <input
           type="text"
           placeholder="Filter by Location"
@@ -375,7 +399,7 @@ function InNeedPage() {
         />
         <input
           type="text"
-          placeholder="Filter by Space Type"
+          placeholder="Filter by Type of Space"
           value={filterSpaceType}
           onChange={(e) => setFilterSpaceType(e.target.value)}
         />
@@ -415,10 +439,10 @@ function InNeedPage() {
             setFilterLocation("");
             setFilterPartySize("");
             setFilterSpaceType("");
+            setFilterNightsOffered("");
             setFilterWillingToHostDisplaced(false);
             setFilterWillingToHostEvacuees(false);
             setFilterPetFriendly(false);
-            setFilterNightsOffered("");
           }}
         >
           Clear Filters
@@ -459,6 +483,7 @@ function InNeedPage() {
                 <strong>Contact:</strong>{" "}
                 {pledge.contactInfo || "No contact provided"}
               </p>
+              <ContactLinks contactInfo={pledge.contactMethods} />
               <p>
                 <strong>Description:</strong>{" "}
                 {pledge.description || "No description provided"}
@@ -472,3 +497,6 @@ function InNeedPage() {
 }
 
 export default InNeedPage;
+
+
+

@@ -2,12 +2,55 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    
+    <!-- SEO & Meta Tags -->
+    <title>Open Door Relief - Emergency Shelter & Disaster Relief Community</title>
+    <meta name="description" content="Connect with verified community members for emergency shelter during disasters. Request help or offer your space to those in need. Safe, secure, community-powered relief." />
+    <meta name="keywords" content="disaster relief, emergency shelter, community help, disaster response, temporary housing, natural disaster" />
+    <meta name="author" content="Open Door Relief" />
+    <meta name="theme-color" content="#3498db" />
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://opendoorrelief.org/" />
+    <meta property="og:title" content="Open Door Relief - Community Disaster Response" />
+    <meta property="og:description" content="Connect with verified community members for emergency shelter during disasters." />
+    <meta property="og:image" content="/assets/logo.png" />
+    
+    <!-- Twitter Card -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://opendoorrelief.org/" />
+    <meta property="twitter:title" content="Open Door Relief - Community Disaster Response" />
+    <meta property="twitter:description" content="Connect with verified community members for emergency shelter during disasters." />
+    <meta property="twitter:image" content="/assets/logo.png" />
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- No-Cache Headers for Production -->
+    <meta http-equiv="Cache-Control" content="max-age=3600" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Service Worker Registration for PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('Service Worker registered successfully');
+            })
+            .catch(error => {
+              console.error('Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

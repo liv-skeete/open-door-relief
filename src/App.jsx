@@ -4,13 +4,12 @@ import InNeedPage from "./InNeedPage";
 import WillingToHelpPage from "./WillingToHelpPage";
 import ProfilePage from "./ProfilePage";
 import VerificationPendingPage from "./VerificationPendingPage";
-import MapSearchPage from "./MapSearchPage";
-import ReliefCentersPage from "./ReliefCentersPage";
 import VerificationPage from "./VerificationPage";
-import DonationPage from "./DonationPage";
 import AdminDashboard from "./AdminDashboard";
 import AuthSwitch from "./components/Auth/AuthSwitch";
 import NavMenu from "./components/NavMenu";
+import OfflineBanner from "./components/OfflineSync/OfflineBanner";
+import OfflineSyncProvider from "./components/OfflineSync/OfflineSyncProvider";
 import "./App.css";
 import logo from "./assets/logo.png";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
@@ -23,10 +22,8 @@ function App() {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Check if test account or verified
-        const isTestAccount = user.email.toLowerCase() === 'test@reliefapp.org';
-        
-        if (isTestAccount || user.emailVerified) {
+        // Check if user email is verified
+        if (user.emailVerified) {
           setIsLoggedIn(true);
           setIsVerified(true);
         } else {
@@ -43,25 +40,21 @@ function App() {
 
     return () => unsubscribe();
   }, []);
-  
+
   // Helper function to check if user can access protected routes
   const canAccessProtectedRoutes = isLoggedIn && isVerified;
 
   return (
     <Router>
-      <div className="app">
-        <header className="header">
-          <h1>Open Door Relief</h1>
-          <p className="subtitle">Connecting communities during disasters</p>
-          {canAccessProtectedRoutes && <NavMenu />}
-        </header>
-        <Routes>
+      <Routes>
           {/* Main landing page */}
           <Route
             path="/"
             element={
               <div className="home-screen">
                 <img src={logo} alt="Open Door Relief Logo" className="logo" />
+                <h1 className="home-title">Open Door Relief</h1>
+                <p className="home-subtitle">Connecting Communities During Disasters</p>
                 <div className="home-buttons">
                   <Link
                     to={
@@ -137,34 +130,6 @@ function App() {
             }
           />
 
-          {/* Map Search Page */}
-          <Route
-            path="/map-search"
-            element={
-              canAccessProtectedRoutes ? (
-                <MapSearchPage />
-              ) : isLoggedIn ? (
-                <Navigate to="/verification-pending" />
-              ) : (
-                <Navigate to="/auth?redirect=/map-search" />
-              )
-            }
-          />
-
-          {/* Relief Centers Page */}
-          <Route
-            path="/relief-centers"
-            element={
-              canAccessProtectedRoutes ? (
-                <ReliefCentersPage />
-              ) : isLoggedIn ? (
-                <Navigate to="/verification-pending" />
-              ) : (
-                <Navigate to="/auth?redirect=/relief-centers" />
-              )
-            }
-          />
-
           {/* Enhanced Verification Page */}
           <Route
             path="/verification"
@@ -177,12 +142,6 @@ function App() {
                 <Navigate to="/auth?redirect=/verification" />
               )
             }
-          />
-
-          {/* Donation Page */}
-          <Route
-            path="/donate"
-            element={<DonationPage />}
           />
 
           {/* Admin Dashboard */}
@@ -221,8 +180,7 @@ function App() {
               </div>
             }
           />
-        </Routes>
-      </div>
+      </Routes>
     </Router>
   );
 }

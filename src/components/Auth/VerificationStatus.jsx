@@ -20,15 +20,6 @@ const VerificationStatus = () => {
         // Refresh the user to get the latest emailVerified status
         await auth.currentUser.reload();
         
-        // Check if the user is the test account
-        const isTestAccount = auth.currentUser.email.toLowerCase() === 'test@reliefapp.org';
-        
-        if (isTestAccount) {
-          setIsVerified(true);
-          setLoading(false);
-          return;
-        }
-        
         // Check Firebase Auth verification status
         if (auth.currentUser.emailVerified) {
           setIsVerified(true);
